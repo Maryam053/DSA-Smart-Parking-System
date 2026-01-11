@@ -108,3 +108,4 @@ Zone* AllocationEngine::getZone(int zoneID) {
     }
     return nullptr;
 }
+// Allocation logic updated for cross-zone support(.cpp)

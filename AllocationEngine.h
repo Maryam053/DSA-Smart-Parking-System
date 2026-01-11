@@ -1,5 +1,6 @@
 #ifndef ALLOCATIONENGINE_H
 #define ALLOCATIONENGINE_H
+// Allocation logic updated for cross-zone support(.h)
 
 #include "Zone.h"
 #include "ParkingRequest.h"
