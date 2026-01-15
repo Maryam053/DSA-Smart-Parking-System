@@ -168,21 +168,20 @@ bool ParkingSystem::cancelRequest(int requestID) {
     RequestState oldState = request->getState();
     
     // Try to cancel
-    if (request->cancel()) {
-        // If was allocated, free the slot
-        if (oldState == ALLOCATED) {
-            HistoryNode* histNode = findInHistory(requestID);
-            if (histNode != nullptr) {
-                engine->freeSlot(histNode->allocatedSlotID, histNode->allocatedZoneID);
-                histNode->request = *request;
-            }
+if (request->cancel()) {
+    if (oldState == ALLOCATED) {
+        HistoryNode* histNode = findInHistory(requestID);
+        if (histNode != nullptr) {
+            engine->freeSlot(histNode->allocatedSlotID, histNode->allocatedZoneID);
+            histNode->request = *request;
         }
-        
-        // Remove from active requests
-        removeActiveRequest(requestID);
-        
-        return true;
+    } else if (oldState == REQUESTED) {
+        addToHistory(*request, -1, -1, false);
     }
+    
+    removeActiveRequest(requestID);
+    return true;
+}
     
     return false;
 }
