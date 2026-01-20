@@ -1,16 +1,16 @@
 #include "Vehicle.h"
 
 Vehicle::Vehicle() {
-    vehicleID = -1;
+    vehicleID = "";
     preferredZone = -1;
 }
 
-Vehicle::Vehicle(int vehicleID, int preferredZone) {
+Vehicle::Vehicle(string vehicleID, int preferredZone) {
     this->vehicleID = vehicleID;
     this->preferredZone = preferredZone;
 }
 
-int Vehicle::getVehicleID() const {
+string Vehicle::getVehicleID() const {
     return vehicleID;
 }
 

@@ -2,13 +2,13 @@
 
 ParkingRequest::ParkingRequest() {
     requestID = -1;
-    vehicleID = -1;
+    vehicleID = "";
     requestedZone = -1;
     requestTime = 0;
     state = REQUESTED;
 }
 
-ParkingRequest::ParkingRequest(int requestID, int vehicleID, int requestedZone, int requestTime) {
+ParkingRequest::ParkingRequest(int requestID, string vehicleID, int requestedZone, int requestTime) {
     this->requestID = requestID;
     this->vehicleID = vehicleID;
     this->requestedZone = requestedZone;
@@ -20,7 +20,7 @@ int ParkingRequest::getRequestID() const {
     return requestID;
 }
 
-int ParkingRequest::getVehicleID() const {
+string ParkingRequest::getVehicleID() const {
     return vehicleID;
 }
 

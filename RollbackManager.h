@@ -2,10 +2,12 @@
 #define ROLLBACKMANAGER_H
 
 #include "ParkingRequest.h"
+#include <string>
+using namespace std;
 
 struct AllocationOperation {
     int requestID;
-    int vehicleID;
+    string vehicleID;
     int allocatedSlotID;
     int allocatedZoneID;
     int requestTime;
@@ -14,7 +16,7 @@ struct AllocationOperation {
     
     AllocationOperation() {
         requestID = -1;
-        vehicleID = -1;
+        vehicleID = "";
         allocatedSlotID = -1;
         allocatedZoneID = -1;
         requestTime = 0;
@@ -22,7 +24,7 @@ struct AllocationOperation {
         newState = REQUESTED;
     }
     
-    AllocationOperation(int reqID, int vehID, int slotID, int zoneID, 
+    AllocationOperation(int reqID, string vehID, int slotID, int zoneID, 
                        int time, RequestState prevState, RequestState newSt) {
         requestID = reqID;
         vehicleID = vehID;

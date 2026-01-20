@@ -1,31 +1,83 @@
 #include <iostream>
+#include <windows.h>
+#include <string>
 #include "ParkingSystem.h"
 
 using namespace std;
 
-// Global system pointer
 ParkingSystem* parkingSystem = nullptr;
 
+void setColor(int color) {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(hConsole, color);
+}
+
+void clearScreen() {
+    system("cls");
+}
+
+void pauseScreen() {
+    cout << "\n  Press Enter to continue...";
+    cin.ignore(10000, '\n');
+    cin.get();
+}
+
+void printBanner() {
+    setColor(11);
+    cout << "\n";
+    cout << "  ========================================================\n";
+    cout << "  ||                                                    ||\n";
+    cout << "  ||    SMART PARKING MANAGEMENT SYSTEM                ||\n";
+    cout << "  ||    City-Wide Parking Allocation & Analytics       ||\n";
+    cout << "  ||                                                    ||\n";
+    cout << "  ========================================================\n";
+    setColor(7);
+}
+
+void printSuccess(const string& message) {
+    setColor(10);
+    cout << "\n  [SUCCESS] " << message << "\n";
+    setColor(7);
+}
+
+void printError(const string& message) {
+    setColor(12);
+    cout << "\n  [ERROR] " << message << "\n";
+    setColor(7);
+}
+
+void printInfo(const string& message) {
+    setColor(14);
+    cout << "\n  [INFO] " << message << "\n";
+    setColor(7);
+}
+
 void printTestHeader(const string& testName) {
+    setColor(13);
     cout << "\n==========================================\n";
     cout << "TEST: " << testName << endl;
     cout << "==========================================\n";
+    setColor(7);
 }
 
 void printTestResult(bool passed) {
     if (passed) {
-        cout << "PASSED" << endl;
+        setColor(10);
+        cout << "[PASSED]" << endl;
     } else {
-        cout << "FAILED" << endl;
+        setColor(12);
+        cout << "[FAILED]" << endl;
     }
+    setColor(7);
 }
 
+// Test functions remain same as before...
 bool test1_BasicAllocation() {
     printTestHeader("Basic Slot Allocation in Same Zone");
     ParkingSystem system(3);
     system.setupZone(1, 1);
     system.setupParkingArea(1, 0, 101, 5);
-    int reqID = system.createParkingRequest(1001, 1, 100);
+    int reqID = system.createParkingRequest("V1001", 1, 100);
     bool allocated = system.allocateParking(reqID);
     printTestResult(allocated);
     return allocated;
@@ -39,9 +91,9 @@ bool test2_CrossZoneAllocation() {
     system.setupZone(2, 1);
     system.setupParkingArea(2, 0, 201, 5);
     system.addZoneAdjacency(1, 2);
-    int req1 = system.createParkingRequest(1001, 1, 100);
+    int req1 = system.createParkingRequest("V1001", 1, 100);
     system.allocateParking(req1);
-    int req2 = system.createParkingRequest(1002, 1, 101);
+    int req2 = system.createParkingRequest("V1002", 1, 101);
     bool crossZoneAllocated = system.allocateParking(req2);
     ParkingAnalytics analytics = system.getAnalytics();
     bool hasCrossZone = (analytics.crossZoneAllocations > 0);
@@ -54,7 +106,7 @@ bool test3_StateTransitions() {
     ParkingSystem system(2);
     system.setupZone(1, 1);
     system.setupParkingArea(1, 0, 101, 5);
-    int reqID = system.createParkingRequest(1001, 1, 100);
+    int reqID = system.createParkingRequest("V1001", 1, 100);
     bool step1 = system.allocateParking(reqID);
     ParkingRequest* req = system.getActiveRequest(reqID);
     bool isAllocated = (req != nullptr && req->getState() == ALLOCATED);
@@ -71,7 +123,7 @@ bool test4_InvalidStateTransition() {
     ParkingSystem system(2);
     system.setupZone(1, 1);
     system.setupParkingArea(1, 0, 101, 5);
-    int reqID = system.createParkingRequest(1001, 1, 100);
+    int reqID = system.createParkingRequest("V1001", 1, 100);
     bool shouldFail = system.occupyParking(reqID);
     printTestResult(!shouldFail);
     return !shouldFail;
@@ -82,7 +134,7 @@ bool test5_CancelRequested() {
     ParkingSystem system(2);
     system.setupZone(1, 1);
     system.setupParkingArea(1, 0, 101, 5);
-    int reqID = system.createParkingRequest(1001, 1, 100);
+    int reqID = system.createParkingRequest("V1001", 1, 100);
     bool cancelled = system.cancelRequest(reqID);
     ParkingAnalytics analytics = system.getAnalytics();
     bool counted = (analytics.cancelledRequests == 1);
@@ -95,7 +147,7 @@ bool test6_CancelAllocated() {
     ParkingSystem system(2);
     system.setupZone(1, 1);
     system.setupParkingArea(1, 0, 101, 2);
-    int req1 = system.createParkingRequest(1001, 1, 100);
+    int req1 = system.createParkingRequest("V1001", 1, 100);
     system.allocateParking(req1);
     int availableBefore = system.getZones()[0].getTotalAvailableSlots();
     system.cancelRequest(req1);
@@ -111,7 +163,7 @@ bool test7_RollbackSingle() {
     system.setupZone(1, 1);
     system.setupParkingArea(1, 0, 101, 5);
     int availableBefore = system.getZones()[0].getTotalAvailableSlots();
-    int reqID = system.createParkingRequest(1001, 1, 100);
+    int reqID = system.createParkingRequest("V1001", 1, 100);
     system.allocateParking(reqID);
     int availableAfterAlloc = system.getZones()[0].getTotalAvailableSlots();
     bool rolled = system.rollbackLastAllocation();
@@ -128,7 +180,8 @@ bool test8_RollbackMultiple() {
     system.setupParkingArea(1, 0, 101, 10);
     int availableBefore = system.getZones()[0].getTotalAvailableSlots();
     for (int i = 0; i < 3; i++) {
-        int reqID = system.createParkingRequest(1001 + i, 1, 100 + i);
+        string vehID = "V" + to_string(1001 + i);
+        int reqID = system.createParkingRequest(vehID, 1, 100 + i);
         system.allocateParking(reqID);
     }
     int availableAfterAlloc = system.getZones()[0].getTotalAvailableSlots();
@@ -144,11 +197,11 @@ bool test9_AverageDuration() {
     ParkingSystem system(2);
     system.setupZone(1, 1);
     system.setupParkingArea(1, 0, 101, 10);
-    int req1 = system.createParkingRequest(1001, 1, 100);
+    int req1 = system.createParkingRequest("V1001", 1, 100);
     system.allocateParking(req1);
     system.occupyParking(req1);
     system.releaseParking(req1, 200);
-    int req2 = system.createParkingRequest(1002, 1, 150);
+    int req2 = system.createParkingRequest("V1002", 1, 150);
     system.allocateParking(req2);
     system.occupyParking(req2);
     system.releaseParking(req2, 350);
@@ -164,9 +217,9 @@ bool test10_AnalyticsAfterRollback() {
     ParkingSystem system(2);
     system.setupZone(1, 1);
     system.setupParkingArea(1, 0, 101, 10);
-    int req1 = system.createParkingRequest(1001, 1, 100);
-    int req2 = system.createParkingRequest(1002, 1, 101);
-    int req3 = system.createParkingRequest(1003, 1, 102);
+    int req1 = system.createParkingRequest("V1001", 1, 100);
+    int req2 = system.createParkingRequest("V1002", 1, 101);
+    int req3 = system.createParkingRequest("V1003", 1, 102);
     system.allocateParking(req1);
     system.allocateParking(req2);
     system.allocateParking(req3);
@@ -185,7 +238,8 @@ bool test11_ZoneUtilization() {
     system.setupZone(1, 1);
     system.setupParkingArea(1, 0, 101, 10);
     for (int i = 0; i < 5; i++) {
-        int reqID = system.createParkingRequest(1001 + i, 1, 100 + i);
+        string vehID = "V" + to_string(1001 + i);
+        int reqID = system.createParkingRequest(vehID, 1, 100 + i);
         system.allocateParking(reqID);
     }
     ParkingAnalytics analytics = system.getAnalytics();
@@ -203,11 +257,13 @@ bool test12_PeakUsageZone() {
     system.setupZone(2, 1);
     system.setupParkingArea(2, 0, 201, 10);
     for (int i = 0; i < 7; i++) {
-        int reqID = system.createParkingRequest(2001 + i, 2, 200 + i);
+        string vehID = "V" + to_string(2001 + i);
+        int reqID = system.createParkingRequest(vehID, 2, 200 + i);
         system.allocateParking(reqID);
     }
     for (int i = 0; i < 3; i++) {
-        int reqID = system.createParkingRequest(1001 + i, 1, 100 + i);
+        string vehID = "V" + to_string(1001 + i);
+        int reqID = system.createParkingRequest(vehID, 1, 100 + i);
         system.allocateParking(reqID);
     }
     int peakZone = system.getPeakUsageZone();
@@ -219,10 +275,13 @@ bool test12_PeakUsageZone() {
 }
 
 void runAllTests() {
+    clearScreen();
+    setColor(11);
     cout << "\n======================================================\n";
     cout << "  Smart Parking Allocation & Zone Management System  \n";
     cout << "              Comprehensive Test Suite               \n";
     cout << "======================================================\n";
+    setColor(7);
     
     int passed = 0;
     int total = 12;
@@ -241,191 +300,427 @@ void runAllTests() {
     if (test12_PeakUsageZone()) passed++;
     
     cout << "\n==========================================\n";
-    cout << "FINAL RESULTS: " << passed << "/" << total << " tests passed\n";
+    if (passed == total) {
+        setColor(10);
+        cout << "ALL TESTS PASSED! " << passed << "/" << total << "\n";
+    } else {
+        setColor(14);
+        cout << "RESULTS: " << passed << "/" << total << " tests passed\n";
+    }
+    setColor(7);
     cout << "==========================================\n\n";
+    
+    pauseScreen();
 }
 
 void initializeSystem() {
-    cout << "\n=== Initializing Parking System ===\n";
-    cout << "Setting up 3 zones with parking areas...\n";
+    clearScreen();
+    printBanner();
+    setColor(14);
+    cout << "\n  [INITIALIZING SYSTEM]\n";
+    setColor(7);
+    cout << "  Setting up 3 zones with parking areas...\n\n";
     
     parkingSystem = new ParkingSystem(3);
     
-    // Zone 1: 2 areas
     parkingSystem->setupZone(1, 2);
     parkingSystem->setupParkingArea(1, 0, 101, 5);
     parkingSystem->setupParkingArea(1, 1, 102, 5);
+    cout << "  + Zone 1: 10 slots (2 areas) - READY\n";
     
-    // Zone 2: 1 area
     parkingSystem->setupZone(2, 1);
     parkingSystem->setupParkingArea(2, 0, 201, 8);
+    cout << "  + Zone 2: 8 slots (1 area) - READY\n";
     
-    // Zone 3: 1 area
     parkingSystem->setupZone(3, 1);
     parkingSystem->setupParkingArea(3, 0, 301, 6);
+    cout << "  + Zone 3: 6 slots (1 area) - READY\n";
     
-    // Add adjacencies
     parkingSystem->addZoneAdjacency(1, 2);
     parkingSystem->addZoneAdjacency(2, 3);
+    cout << "\n  Adjacencies configured: Zone 1 <-> Zone 2 <-> Zone 3\n";
     
-    cout << "System initialized successfully!\n";
-    cout << "Zone 1: 10 slots (2 areas)\n";
-    cout << "Zone 2: 8 slots (1 area)\n";
-    cout << "Zone 3: 6 slots (1 area)\n";
+    printSuccess("System initialized successfully!");
+    pauseScreen();
+}
+
+void showUserGuide() {
+    clearScreen();
+    printBanner();
+    setColor(14);
+    cout << "\n  [USER GUIDE - HOW TO USE]\n";
+    setColor(7);
+    cout << "  --------------------------------------------------------\n";
+    cout << "\n  TYPICAL PARKING WORKFLOW:\n\n";
+    cout << "  1. CREATE REQUEST      : Register a vehicle parking request\n";
+    cout << "                           Example: Vehicle LEB-234 wants Zone 1\n\n";
+    cout << "  2. ALLOCATE PARKING    : System assigns a parking slot\n";
+    cout << "                           Note your Request ID!\n\n";
+    cout << "  3. OCCUPY SLOT         : Vehicle arrives and parks\n\n";
+    cout << "  4. RELEASE SLOT        : Vehicle leaves and frees the slot\n\n";
+    cout << "  --------------------------------------------------------\n";
+    cout << "\n  IMPORTANT NOTES:\n";
+    cout << "  - Vehicle IDs can be alphanumeric (e.g., LEB-234, ABC-1234)\n";
+    cout << "  - Remember your Request ID after creating a request\n";
+    cout << "  - Follow the workflow: Create -> Allocate -> Occupy -> Release\n";
+    cout << "  - You can cancel at REQUESTED or ALLOCATED stage\n";
+    cout << "  - Use Rollback to undo recent allocations\n";
+    cout << "  --------------------------------------------------------\n";
+    pauseScreen();
 }
 
 void displayMenu() {
-    cout << "\n========================================\n";
-    cout << "    SMART PARKING MANAGEMENT SYSTEM    \n";
-    cout << "========================================\n";
-    cout << "1.  Create Parking Request\n";
-    cout << "2.  Allocate Parking\n";
-    cout << "3.  Occupy Parking Slot\n";
-    cout << "4.  Release Parking Slot\n";
-    cout << "5.  Cancel Request\n";
-    cout << "6.  Rollback Last Allocation\n";
-    cout << "7.  Rollback Last K Allocations\n";
-    cout << "8.  View Zone Utilization\n";
-    cout << "9.  View Analytics\n";
-    cout << "10. View Peak Usage Zone\n";
-    cout << "11. Run Automated Tests\n";
-    cout << "0.  Exit\n";
-    cout << "========================================\n";
-    cout << "Enter your choice: ";
+    clearScreen();
+    printBanner();
+    
+    setColor(14);
+    cout << "\n  [MAIN MENU]\n";
+    setColor(7);
+    cout << "  --------------------------------------------------------\n";
+    cout << "   1.  Create Parking Request\n";
+    cout << "   2.  Allocate Parking\n";
+    cout << "   3.  Occupy Parking Slot\n";
+    cout << "   4.  Release Parking Slot\n";
+    cout << "   5.  Cancel Request\n";
+    cout << "   6.  Rollback Last Allocation\n";
+    cout << "   7.  Rollback Last K Allocations\n";
+    cout << "   8.  View Zone Utilization\n";
+    cout << "   9.  View Analytics Dashboard\n";
+    cout << "   10. View Peak Usage Zone\n";
+    cout << "   11. Run Automated Tests\n";
+    cout << "   12. View User Guide\n";
+    cout << "   0.  Exit System\n";
+    cout << "  --------------------------------------------------------\n";
+    setColor(11);
+    cout << "\n  Enter your choice: ";
+    setColor(7);
 }
 
 void handleCreateRequest() {
-    int vehicleID, zoneID, requestTime;
-    cout << "\n--- Create Parking Request ---\n";
-    cout << "Enter Vehicle ID: ";
+    string vehicleID;
+    int zoneID, requestTime;
+    
+    clearScreen();
+    printBanner();
+    setColor(14);
+    cout << "\n  [CREATE PARKING REQUEST]\n";
+    setColor(7);
+    cout << "  --------------------------------------------------------\n";
+    printInfo("Vehicle IDs can include letters and numbers (e.g., LEB-234)");
+    cout << "\n  Enter Vehicle ID: ";
     cin >> vehicleID;
-    cout << "Enter Requested Zone (1-3): ";
-    cin >> zoneID;
-    cout << "Enter Request Time: ";
-    cin >> requestTime;
+    
+    cout << "  Enter Requested Zone (1-3): ";
+    if (!(cin >> zoneID) || zoneID < 1 || zoneID > 3) {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        printError("Invalid zone! Must be 1, 2, or 3.");
+        pauseScreen();
+        return;
+    }
+    
+    cout << "  Enter Request Time: ";
+    if (!(cin >> requestTime)) {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        printError("Invalid time! Please enter a number.");
+        pauseScreen();
+        return;
+    }
     
     int requestID = parkingSystem->createParkingRequest(vehicleID, zoneID, requestTime);
-    cout << "Request created successfully! Request ID: " << requestID << "\n";
+    printSuccess("Request created successfully!");
+    setColor(11);
+    cout << "  Vehicle ID: " << vehicleID << "\n";
+    cout << "  Request ID: " << requestID << " (Remember this!)\n";
+    setColor(7);
+    
+    pauseScreen();
 }
 
 void handleAllocateParking() {
     int requestID;
-    cout << "\n--- Allocate Parking ---\n";
-    cout << "Enter Request ID: ";
-    cin >> requestID;
+    clearScreen();
+    printBanner();
+    setColor(14);
+    cout << "\n  [ALLOCATE PARKING]\n";
+    setColor(7);
+    cout << "  --------------------------------------------------------\n";
+    printInfo("This assigns a parking slot to your request");
+    
+    cout << "\n  Enter Request ID: ";
+    if (!(cin >> requestID)) {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        printError("Invalid Request ID! Please enter a number.");
+        pauseScreen();
+        return;
+    }
     
     bool success = parkingSystem->allocateParking(requestID);
     if (success) {
-        cout << "Parking allocated successfully!\n";
+        printSuccess("Parking allocated successfully!");
     } else {
-        cout << "Failed to allocate parking. Check request ID or availability.\n";
+        printError("Failed to allocate. Possible reasons:");
+        cout << "  - Invalid Request ID\n";
+        cout << "  - Request already allocated\n";
+        cout << "  - No slots available\n";
     }
+    
+    pauseScreen();
 }
 
 void handleOccupyParking() {
     int requestID;
-    cout << "\n--- Occupy Parking Slot ---\n";
-    cout << "Enter Request ID: ";
-    cin >> requestID;
+    clearScreen();
+    printBanner();
+    setColor(14);
+    cout << "\n  [OCCUPY PARKING SLOT]\n";
+    setColor(7);
+    cout << "  --------------------------------------------------------\n";
+    printInfo("Vehicle has arrived and is parking in the slot");
+    
+    cout << "\n  Enter Request ID: ";
+    if (!(cin >> requestID)) {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        printError("Invalid Request ID! Please enter a number.");
+        pauseScreen();
+        return;
+    }
     
     bool success = parkingSystem->occupyParking(requestID);
     if (success) {
-        cout << "Parking slot occupied successfully!\n";
+        printSuccess("Parking slot occupied successfully!");
     } else {
-        cout << "Failed to occupy. Ensure parking is allocated first.\n";
+        printError("Failed to occupy. Possible reasons:");
+        cout << "  - Invalid Request ID\n";
+        cout << "  - Request not allocated yet (Allocate first!)\n";
+        cout << "  - Request already occupied or released\n";
     }
+    
+    pauseScreen();
 }
 
 void handleReleaseParking() {
     int requestID, releaseTime;
-    cout << "\n--- Release Parking Slot ---\n";
-    cout << "Enter Request ID: ";
-    cin >> requestID;
-    cout << "Enter Release Time: ";
-    cin >> releaseTime;
+    clearScreen();
+    printBanner();
+    setColor(14);
+    cout << "\n  [RELEASE PARKING SLOT]\n";
+    setColor(7);
+    cout << "  --------------------------------------------------------\n";
+    printInfo("Vehicle is leaving and freeing the slot");
+    
+    cout << "\n  Enter Request ID: ";
+    if (!(cin >> requestID)) {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        printError("Invalid Request ID! Please enter a number.");
+        pauseScreen();
+        return;
+    }
+    
+    cout << "  Enter Release Time: ";
+    if (!(cin >> releaseTime)) {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        printError("Invalid time! Please enter a number.");
+        pauseScreen();
+        return;
+    }
     
     bool success = parkingSystem->releaseParking(requestID, releaseTime);
     if (success) {
-        cout << "Parking slot released successfully!\n";
+        printSuccess("Parking slot released successfully!");
     } else {
-        cout << "Failed to release. Check request ID.\n";
+        printError("Failed to release. Possible reasons:");
+        cout << "  - Invalid Request ID\n";
+        cout << "  - Request not occupied yet (Occupy first!)\n";
     }
+    
+    pauseScreen();
 }
 
 void handleCancelRequest() {
     int requestID;
-    cout << "\n--- Cancel Request ---\n";
-    cout << "Enter Request ID: ";
-    cin >> requestID;
+    clearScreen();
+    printBanner();
+    setColor(14);
+    cout << "\n  [CANCEL REQUEST]\n";
+    setColor(7);
+    cout << "  --------------------------------------------------------\n";
+    printInfo("Cancel a pending or allocated request");
+    
+    cout << "\n  Enter Request ID: ";
+    if (!(cin >> requestID)) {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        printError("Invalid Request ID! Please enter a number.");
+        pauseScreen();
+        return;
+    }
     
     bool success = parkingSystem->cancelRequest(requestID);
     if (success) {
-        cout << "Request cancelled successfully!\n";
+        printSuccess("Request cancelled successfully!");
     } else {
-        cout << "Failed to cancel. Check request ID.\n";
+        printError("Failed to cancel. Possible reasons:");
+        cout << "  - Invalid Request ID\n";
+        cout << "  - Request already occupied or released\n";
     }
+    
+    pauseScreen();
 }
 
 void handleRollbackSingle() {
-    cout << "\n--- Rollback Last Allocation ---\n";
+    clearScreen();
+    printBanner();
+    setColor(14);
+    cout << "\n  [ROLLBACK LAST ALLOCATION]\n";
+    setColor(7);
+    cout << "  --------------------------------------------------------\n";
+    printInfo("Undo the most recent parking allocation");
+    
     bool success = parkingSystem->rollbackLastAllocation();
     if (success) {
-        cout << "Last allocation rolled back successfully!\n";
+        printSuccess("Last allocation rolled back successfully!");
     } else {
-        cout << "No allocations to rollback.\n";
+        printError("No allocations to rollback.");
     }
+    
+    pauseScreen();
 }
 
 void handleRollbackK() {
     int k;
-    cout << "\n--- Rollback Last K Allocations ---\n";
-    cout << "Enter number of allocations to rollback: ";
-    cin >> k;
+    clearScreen();
+    printBanner();
+    setColor(14);
+    cout << "\n  [ROLLBACK LAST K ALLOCATIONS]\n";
+    setColor(7);
+    cout << "  --------------------------------------------------------\n";
+    printInfo("Undo multiple recent allocations");
+    
+    cout << "\n  Enter number of allocations to rollback: ";
+    if (!(cin >> k) || k < 1) {
+        cin.clear();
+        cin.ignore(10000, '\n');
+        printError("Invalid number! Must be positive.");
+        pauseScreen();
+        return;
+    }
     
     bool success = parkingSystem->rollbackLastKAllocations(k);
     if (success) {
-        cout << "Rolled back " << k << " allocations successfully!\n";
+        printSuccess("Allocations rolled back successfully!");
+        setColor(11);
+        cout << "  Rolled back: " << k << " allocations\n";
+        setColor(7);
     } else {
-        cout << "Failed to rollback. Not enough allocations.\n";
+        printError("Failed to rollback. Not enough allocations.");
     }
+    
+    pauseScreen();
 }
 
 void handleViewUtilization() {
+    clearScreen();
+    printBanner();
+    setColor(14);
+    cout << "\n  [ZONE UTILIZATION]\n";
+    setColor(7);
+    cout << "  --------------------------------------------------------\n";
     parkingSystem->printZoneUtilization();
+    
+    pauseScreen();
 }
 
 void handleViewAnalytics() {
-    cout << "\n=== Parking Analytics ===\n";
+    clearScreen();
+    printBanner();
+    setColor(14);
+    cout << "\n  [ANALYTICS DASHBOARD]\n";
+    setColor(7);
+    cout << "  --------------------------------------------------------\n";
+    
     ParkingAnalytics analytics = parkingSystem->getAnalytics();
-    cout << "Total Requests: " << analytics.totalRequests << "\n";
-    cout << "Completed Requests: " << analytics.completedRequests << "\n";
-    cout << "Cancelled Requests: " << analytics.cancelledRequests << "\n";
-    cout << "Average Parking Duration: " << analytics.averageParkingDuration << "\n";
-    cout << "Overall Utilization: " << analytics.zoneUtilizationRate << "%\n";
-    cout << "Cross-Zone Allocations: " << analytics.crossZoneAllocations << "\n";
+    
+    setColor(11);
+    cout << "  Total Requests:           ";
+    setColor(7);
+    cout << analytics.totalRequests << "\n";
+    
+    setColor(11);
+    cout << "  Completed Requests:       ";
+    setColor(7);
+    cout << analytics.completedRequests << "\n";
+    
+    setColor(11);
+    cout << "  Cancelled Requests:       ";
+    setColor(7);
+    cout << analytics.cancelledRequests << "\n";
+    
+    setColor(11);
+    cout << "  Avg Parking Duration:     ";
+    setColor(7);
+    cout << analytics.averageParkingDuration << " units\n";
+    
+    setColor(11);
+    cout << "  Overall Utilization:      ";
+    setColor(7);
+    cout << analytics.zoneUtilizationRate << "%\n";
+    
+    setColor(11);
+    cout << "  Cross-Zone Allocations:   ";
+    setColor(7);
+    cout << analytics.crossZoneAllocations << "\n";
+    
+    cout << "  --------------------------------------------------------\n";
+    
+    pauseScreen();
 }
 
 void handleViewPeakZone() {
+    clearScreen();
+    printBanner();
+    setColor(14);
+    cout << "\n  [PEAK USAGE ZONE]\n";
+    setColor(7);
+    cout << "  --------------------------------------------------------\n";
+    
     int peakZone = parkingSystem->getPeakUsageZone();
-    cout << "\n=== Peak Usage Zone ===\n";
-    cout << "Zone with highest usage: Zone " << peakZone << "\n";
+    setColor(10);
+    cout << "  Zone with highest usage: Zone " << peakZone << "\n\n";
+    setColor(7);
+    
     parkingSystem->printZoneUtilization();
+    
+    pauseScreen();
 }
 
 int main() {
     int choice;
     bool systemInitialized = false;
     
-    cout << "\n======================================================\n";
-    cout << "  Smart Parking Allocation & Zone Management System  \n";
-    cout << "======================================================\n";
-    
     while (true) {
         displayMenu();
-        cin >> choice;
+        
+        if (!(cin >> choice)) {
+            cin.clear();
+            cin.ignore(10000, '\n');
+            printError("Invalid input! Please enter a number.");
+            pauseScreen();
+            continue;
+        }
         
         if (choice == 0) {
-            cout << "\nExiting system. Thank you!\n";
+            clearScreen();
+            printBanner();
+            setColor(14);
+            cout << "\n  Thank you for using Smart Parking System!\n";
+            cout << "  Goodbye!\n\n";
+            setColor(7);
             if (parkingSystem != nullptr) {
                 delete parkingSystem;
             }
@@ -437,7 +732,12 @@ int main() {
             continue;
         }
         
-        if (!systemInitialized && choice != 11) {
+        if (choice == 12) {
+            showUserGuide();
+            continue;
+        }
+        
+        if (!systemInitialized && choice >= 1 && choice <= 10) {
             initializeSystem();
             systemInitialized = true;
         }
@@ -474,7 +774,8 @@ int main() {
                 handleViewPeakZone();
                 break;
             default:
-                cout << "Invalid choice! Please try again.\n";
+                printError("Invalid choice! Please select 0-12.");
+                pauseScreen();
         }
     }
     

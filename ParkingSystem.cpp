@@ -22,7 +22,6 @@ ParkingSystem::~ParkingSystem() {
     delete rollbackManager;
     delete[] activeRequests;
     
-    // Clear history linked list
     while (historyHead != nullptr) {
         HistoryNode* temp = historyHead;
         historyHead = historyHead->next;
@@ -35,7 +34,6 @@ void ParkingSystem::setupZone(int zoneID, int areaCount) {
         if (zones[i].getZoneID() == -1 || zones[i].getZoneID() == zoneID) {
             zones[i] = Zone(zoneID, areaCount);
             
-            // Initialize allocation engine if not done
             if (engine == nullptr) {
                 engine = new AllocationEngine(zones, zoneCount);
             }
@@ -54,7 +52,6 @@ void ParkingSystem::setupParkingArea(int zoneID, int areaIndex, int areaID, int 
 }
 
 void ParkingSystem::addZoneAdjacency(int zoneID1, int zoneID2) {
-    // Add bidirectional adjacency
     for (int i = 0; i < zoneCount; i++) {
         if (zones[i].getZoneID() == zoneID1) {
             zones[i].addAdjacentZone(zoneID2);
@@ -65,8 +62,7 @@ void ParkingSystem::addZoneAdjacency(int zoneID1, int zoneID2) {
     }
 }
 
-int ParkingSystem::createParkingRequest(int vehicleID, int requestedZone, int requestTime) {
-    // Expand array if needed
+int ParkingSystem::createParkingRequest(string vehicleID, int requestedZone, int requestTime) {
     if (activeRequestCount >= activeRequestCapacity) {
         expandActiveRequests();
     }
@@ -83,25 +79,20 @@ bool ParkingSystem::allocateParking(int requestID) {
         return false;
     }
     
-    // Check if request is in correct state
     if (request->getState() != REQUESTED) {
         return false;
     }
     
-    // Try to allocate
     AllocationResult result = engine->allocateSlot(*request);
     
     if (result.success) {
-        // Update request state
         request->allocate();
         
-        // Save operation for rollback
         AllocationOperation op(requestID, request->getVehicleID(), 
                               result.allocatedSlotID, result.allocatedZoneID,
                               request->getRequestTime(), REQUESTED, ALLOCATED);
         rollbackManager->pushOperation(op);
         
-        // Add to history with allocation info
         addToHistory(*request, result.allocatedSlotID, result.allocatedZoneID, result.isCrossZone);
         
         return true;
@@ -116,9 +107,7 @@ bool ParkingSystem::occupyParking(int requestID) {
         return false;
     }
     
-    // Check state and transition
     if (request->occupy()) {
-        // Update in history
         HistoryNode* histNode = findInHistory(requestID);
         if (histNode != nullptr) {
             histNode->request = *request;
@@ -135,22 +124,17 @@ bool ParkingSystem::releaseParking(int requestID, int releaseTime) {
         return false;
     }
     
-    // Find allocation info from history
     HistoryNode* histNode = findInHistory(requestID);
     if (histNode == nullptr) {
         return false;
     }
     
-    // Check state and transition
     if (request->release()) {
-        // Free the slot
         engine->freeSlot(histNode->allocatedSlotID, histNode->allocatedZoneID);
         
-        // Update history
         histNode->request = *request;
         histNode->releaseTime = releaseTime;
         
-        // Remove from active requests
         removeActiveRequest(requestID);
         
         return true;
@@ -167,21 +151,20 @@ bool ParkingSystem::cancelRequest(int requestID) {
     
     RequestState oldState = request->getState();
     
-    // Try to cancel
-if (request->cancel()) {
-    if (oldState == ALLOCATED) {
-        HistoryNode* histNode = findInHistory(requestID);
-        if (histNode != nullptr) {
-            engine->freeSlot(histNode->allocatedSlotID, histNode->allocatedZoneID);
-            histNode->request = *request;
+    if (request->cancel()) {
+        if (oldState == ALLOCATED) {
+            HistoryNode* histNode = findInHistory(requestID);
+            if (histNode != nullptr) {
+                engine->freeSlot(histNode->allocatedSlotID, histNode->allocatedZoneID);
+                histNode->request = *request;
+            }
+        } else if (oldState == REQUESTED) {
+            addToHistory(*request, -1, -1, false);
         }
-    } else if (oldState == REQUESTED) {
-        addToHistory(*request, -1, -1, false);
+        
+        removeActiveRequest(requestID);
+        return true;
     }
-    
-    removeActiveRequest(requestID);
-    return true;
-}
     
     return false;
 }
@@ -192,16 +175,11 @@ bool ParkingSystem::rollbackLastAllocation() {
         return false;
     }
     
-    // Find the request
     ParkingRequest* request = findActiveRequest(op.requestID);
     
-    // Free the slot
     engine->freeSlot(op.allocatedSlotID, op.allocatedZoneID);
     
-    // Restore request state if still active
     if (request != nullptr) {
-        // Manually set state back (need to add setter or handle this)
-        // For now, we'll cancel it
         request->cancel();
     }
     
@@ -223,7 +201,6 @@ bool ParkingSystem::rollbackLastKAllocations(int k) {
 ParkingAnalytics ParkingSystem::getAnalytics() const {
     ParkingAnalytics analytics;
     
-    // Count requests by state
     int totalDuration = 0;
     int completedCount = 0;
     int crossZoneCount = 0;
@@ -256,7 +233,6 @@ ParkingAnalytics ParkingSystem::getAnalytics() const {
         analytics.averageParkingDuration = (double)totalDuration / completedCount;
     }
     
-    // Calculate zone utilization
     int totalSlots = 0;
     int occupiedSlots = 0;
     for (int i = 0; i < zoneCount; i++) {
@@ -322,7 +298,6 @@ ParkingRequest* ParkingSystem::findActiveRequest(int requestID) {
 void ParkingSystem::removeActiveRequest(int requestID) {
     for (int i = 0; i < activeRequestCount; i++) {
         if (activeRequests[i].getRequestID() == requestID) {
-            // Shift remaining requests
             for (int j = i; j < activeRequestCount - 1; j++) {
                 activeRequests[j] = activeRequests[j + 1];
             }

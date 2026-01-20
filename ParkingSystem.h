@@ -6,6 +6,8 @@
 #include "ParkingRequest.h"
 #include "AllocationEngine.h"
 #include "RollbackManager.h"
+#include <string>
+using namespace std;
 
 struct HistoryNode {
     ParkingRequest request;
@@ -73,7 +75,7 @@ public:
     void setupParkingArea(int zoneID, int areaIndex, int areaID, int slotCapacity);
     void addZoneAdjacency(int zoneID1, int zoneID2);
     
-    int createParkingRequest(int vehicleID, int requestedZone, int requestTime);
+    int createParkingRequest(string vehicleID, int requestedZone, int requestTime);
     bool allocateParking(int requestID);
     bool occupyParking(int requestID);
     bool releaseParking(int requestID, int releaseTime);
