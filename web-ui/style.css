@@ -41,9 +41,10 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: transparent;
+    background: transparent url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVQImWNgYGD4z8DAwAAAAAUAAQCKLvYAAAAASUVORK5CYII=') repeat;
     z-index: -1;
     animation: twinkle 200s linear infinite;
+    opacity: 0.5;
 }
 
 @keyframes twinkle {
@@ -87,6 +88,7 @@ body {
     background: linear-gradient(45deg, var(--primary), var(--secondary));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .nav-status {
@@ -149,6 +151,7 @@ body {
     background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
     animation: gradientShift 3s ease infinite;
 }
 
@@ -228,6 +231,7 @@ body {
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .stat-label {
@@ -509,6 +513,7 @@ body {
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 /* Activity Log */
@@ -524,6 +529,25 @@ body {
     padding: 1.5rem;
     max-height: 400px;
     overflow-y: auto;
+}
+
+/* Custom scrollbar for activity log */
+.activity-log::-webkit-scrollbar {
+    width: 8px;
+}
+
+.activity-log::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.activity-log::-webkit-scrollbar-thumb {
+    background: linear-gradient(var(--primary), var(--secondary));
+    border-radius: 10px;
+}
+
+.activity-log::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
 }
 
 .log-entry {
@@ -583,7 +607,7 @@ body {
     margin-top: 4rem;
 }
 
-/* Scrollbar */
+/* Global Scrollbar */
 ::-webkit-scrollbar {
     width: 10px;
 }
@@ -609,6 +633,10 @@ body {
     
     .stats-grid, .zones-grid, .control-grid, .analytics-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .parking-slots {
+        grid-template-columns: repeat(3, 1fr);
     }
     
     .navbar {
