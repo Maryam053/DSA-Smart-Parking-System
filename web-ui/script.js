@@ -12,7 +12,12 @@ let parkingData = {
         completed: 0,
         cancelled: 0,
         avgDuration: 0,
-        crossZone: 0
+        crossZone: 0,
+        totalRevenue: 0  // NEW: Total revenue tracking
+    },
+    pricing: {
+        perUnitRate: 10,        // 10 PKR per time unit
+        crossZonePenalty: 50    // 50 PKR extra for cross-zone
     }
 };
 
@@ -56,6 +61,13 @@ function showResult(elementId, message, isSuccess) {
     }, 5000);
 }
 
+// NEW: Calculate Parking Cost
+function calculateCost(duration, isCrossZone) {
+    const baseCost = duration * parkingData.pricing.perUnitRate;
+    const crossZoneFee = isCrossZone ? parkingData.pricing.crossZonePenalty : 0;
+    return baseCost + crossZoneFee;
+}
+
 // Update Statistics
 function updateAllStats() {
     const totalSlots = parkingData.zones.reduce((sum, zone) => sum + zone.total, 0);
@@ -74,6 +86,9 @@ function updateAllStats() {
     document.getElementById('cancelledRequests').textContent = parkingData.analytics.cancelled;
     document.getElementById('avgDuration').textContent = parkingData.analytics.avgDuration.toFixed(0);
     document.getElementById('crossZone').textContent = parkingData.analytics.crossZone;
+    
+    // NEW: Update revenue
+    document.getElementById('totalRevenue').textContent = parkingData.analytics.totalRevenue.toFixed(0);
     
     const peakZone = getPeakZone();
     document.getElementById('peakZone').textContent = peakZone > 0 ? `Zone ${peakZone}` : '-';
@@ -153,7 +168,9 @@ function createRequest() {
         requestTime: requestTime,
         state: 'REQUESTED',
         allocatedZone: null,
-        allocatedSlot: null
+        allocatedSlot: null,
+        isCrossZone: false,  // NEW: Track if cross-zone
+        cost: 0              // NEW: Track parking cost
     };
     
     parkingData.requests.push(request);
@@ -198,6 +215,7 @@ function allocateParking() {
         request.state = 'ALLOCATED';
         request.allocatedZone = requestedZone.id;
         request.allocatedSlot = requestedZone.occupied + 1;
+        request.isCrossZone = false;  // NEW: Same zone
         
         showResult('allocateResult', `✅ Allocated in Zone ${requestedZone.id}, Slot ${request.allocatedSlot}`, true);
         addLog(`Request #${requestID} allocated in Zone ${requestedZone.id}`, 'success');
@@ -209,10 +227,11 @@ function allocateParking() {
             request.state = 'ALLOCATED';
             request.allocatedZone = availableZone.id;
             request.allocatedSlot = availableZone.occupied + 1;
+            request.isCrossZone = true;  // NEW: Cross zone
             parkingData.analytics.crossZone++;
             
-            showResult('allocateResult', `✅ Cross-zone allocation: Zone ${availableZone.id}, Slot ${request.allocatedSlot}`, true);
-            addLog(`Request #${requestID} cross-allocated to Zone ${availableZone.id}`, 'info');
+            showResult('allocateResult', `✅ Cross-zone allocation: Zone ${availableZone.id}, Slot ${request.allocatedSlot} (+₨50 penalty)`, true);
+            addLog(`Request #${requestID} cross-allocated to Zone ${availableZone.id} (₨50 penalty)`, 'info');
         } else {
             showResult('allocateResult', '❌ No slots available in any zone', false);
             addLog(`Request #${requestID} failed - No slots available`, 'error');
@@ -261,7 +280,7 @@ function occupySlot() {
     document.getElementById('occupyID').value = '';
 }
 
-// FIXED FUNCTION: Cancel Request - Only REQUESTED and ALLOCATED can be cancelled
+// Cancel Request Function
 function cancelRequest() {
     const requestID = parseInt(document.getElementById('cancelID').value);
     
@@ -279,7 +298,7 @@ function cancelRequest() {
     
     const request = parkingData.requests[requestIndex];
     
-    // FIXED: Check if request can be cancelled - Only REQUESTED or ALLOCATED
+    // Check if request can be cancelled - Only REQUESTED or ALLOCATED
     if (request.state === 'OCCUPIED') {
         showResult('cancelResult', '❌ Cannot cancel - vehicle is already parked!', false);
         return;
@@ -297,11 +316,6 @@ function cancelRequest() {
     
     const previousState = request.state;
     
-    // If allocated, free up the slot (but don't decrement occupied since it wasn't occupied yet)
-    if (request.state === 'ALLOCATED') {
-        // Just mark as cancelled, slot wasn't actually occupied
-    }
-    
     // Update request state
     request.state = 'CANCELLED';
     
@@ -316,6 +330,7 @@ function cancelRequest() {
     document.getElementById('cancelID').value = '';
 }
 
+// NEW: Release Slot with Pricing Calculation
 function releaseSlot() {
     const requestID = parseInt(document.getElementById('releaseID').value);
     const releaseTime = parseInt(document.getElementById('releaseTime').value);
@@ -345,8 +360,10 @@ function releaseSlot() {
     request.state = 'RELEASED';
     request.releaseTime = releaseTime;
     
-    // Calculate duration
+    // Calculate duration and cost
     const duration = releaseTime - request.requestTime;
+    const cost = calculateCost(duration, request.isCrossZone);
+    request.cost = cost;
     
     // Update zone occupancy
     const zone = parkingData.zones.find(z => z.id === request.allocatedZone);
@@ -356,6 +373,7 @@ function releaseSlot() {
     
     // Update analytics
     parkingData.analytics.completed++;
+    parkingData.analytics.totalRevenue += cost;  // NEW: Add to revenue
     
     // Recalculate average duration
     const completedRequests = parkingData.requests.filter(r => r.state === 'RELEASED');
@@ -366,8 +384,13 @@ function releaseSlot() {
         parkingData.analytics.avgDuration = totalDuration / completedRequests.length;
     }
     
-    showResult('releaseResult', `✅ Slot released! Duration: ${duration} units`, true);
-    addLog(`Request #${requestID} released from Zone ${request.allocatedZone} (Duration: ${duration})`, 'success');
+    // NEW: Show cost breakdown
+    const costBreakdown = request.isCrossZone 
+        ? `Duration: ${duration} units | Base: ₨${duration * 10} + Cross-zone: ₨50`
+        : `Duration: ${duration} units`;
+    
+    showResult('releaseResult', `✅ Slot released! ${costBreakdown} | Total: ₨${cost}`, true);
+    addLog(`Request #${requestID} released from Zone ${request.allocatedZone} | Cost: ₨${cost}`, 'success');
     
     updateAllStats();
     updateZoneDisplay();
